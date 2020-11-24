@@ -1,0 +1,40 @@
+curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
+
+chmod +x ./kubectl
+sudo mv ./kubectl /usr/local/bin/kubectl
+
+kubectl version --client
+
+sudo apt-get update && sudo apt-get install -y apt-transport-https gnupg2
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee -a /etc/apt/sources.list.d/kubernetes.list
+sudo apt-get update
+sudo apt-get install -y kubectl
+
+
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 \
+  && chmod +x minikube
+
+
+sudo mkdir -p /usr/local/bin/
+sudo install minikube /usr/local/bin/
+
+minikube start --driver=docker
+
+
+gcloud container hub memberships register cluster-2 \
+            --context=minikube \
+            --service-account-key-file=/home/destok3/primeval-proton-293806-d04a7541bfbd.json \
+            --kubeconfig=/home/destok3/.kube/config  \
+            --project=primeval-proton-293806
+
+mk8s
+
+kubectl create clusterrolebinding mk8s --clusterrole view --serviceaccount default:${KSA_NAME}
+
+kubectl create clusterrolebinding mk8sreader --clusterrole cloud-console-reader --serviceaccount default:${KSA_NAME}
+
+kubectl create clusterrolebinding mk8s --clusterrole cluster-admin --serviceaccount default:${KSA_NAME}
+
+SECRET_NAME=$(kubectl get serviceaccount ${KSA_NAME} -o jsonpath='{$.secrets[0].name}')
+kubectl get secret ${SECRET_NAME} -o jsonpath='{$.data.token}' | base64 --decode

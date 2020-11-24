@@ -1,0 +1,27 @@
+ kubectl config current-context 
+
+
+ gcloud container hub memberships register k8sbox    \
+            --context="kubernetes-admin@kubernetes" \
+            --service-account-key-file="/root/sa.json" \
+            --kubeconfig="/root/.kube/config" \
+            --project=primeval-proton-293806
+
+
+KSA_NAME=k8sbox
+kubectl create serviceaccount ${KSA_NAME}
+kubectl create clusterrolebinding k8sbox \
+--clusterrole view --serviceaccount default:${KSA_NAME}
+kubectl create clusterrolebinding k8sboxreader \
+--clusterrole cloud-console-reader --serviceaccount default:${KSA_NAME}
+
+
+SECRET_NAME=$(kubectl get serviceaccount k8sbox -o jsonpath='{$.secrets[0].name}')
+kubectl get secret ${SECRET_NAME} -o jsonpath='{$.data.token}' | base64 --decode
+
+https://cloud.google.com/service-mesh/docs/attached-clusters-install?authuser=1
+
+
+kubectl label namespace default  istio-injection- istio.io/rev=asm-173-6 --overwrite
+
+kubectl rollout restart deployment -n NAMESPACE

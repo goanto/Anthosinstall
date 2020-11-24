@@ -1,0 +1,265 @@
+export PROJECT_ID=stately-pulsar-291613 
+export ENVIRON_PROJECT_NUMBER=139409204290
+export EMAIL=geojohns.antony2018@vitstudent.ac.in 
+export CLUSTER_NAME=abc
+export CLUSTER_LOCATION=us-central1-c
+LABELS=$6
+export WORKLOAD_POOL=${PROJECT_ID}.svc.id.goog
+export MESH_ID="proj-${PROJ_ENVIRON}"
+export ENVIRON_PROJECT_NUMBER=139409204290
+
+
+
+
+
+primeval-proton-293806 
+
+export PROJECT_ID=primeval-proton-293806 
+export ENVIRON_PROJECT_NUMBER=368570559343
+export EMAIL=geo.antony@aividtechvision.com
+export CLUSTER_NAME=cluster-2		
+export CLUSTER_LOCATION=registered
+export WORKLOAD_POOL=${PROJECT_ID}.svc.id.goog
+export MESH_ID="proj-${ENVIRON_PROJECT_NUMBER}"
+
+
+export ENVIRON_PROJECT_NUMBER=139409204290
+
+
+gcloud auth login
+gcloud components update
+gcloud components install kubectl
+gcloud components install kpt
+
+gcloud projects list
+#export PROJECT_ID=YOUR_PROJECT_ID
+#export ENVIRON_PROJECT_NUMBER=YOUR_ENVIRON_PROJECT_NUMBER
+
+gcloud projects add-iam-policy-binding ${PROJECT_ID} \
+    --member 'user:geo.antony@aividtechvision.com' \
+    --role=roles/editor \
+    --role=roles/compute.admin \
+    --role=roles/container.admin \
+    --role=roles/resourcemanager.projectIamAdmin \
+    --role=roles/iam.serviceAccountAdmin \
+    --role=roles/iam.serviceAccountKeyAdmin \
+    --role=roles/gkehub.admin
+
+
+gcloud services enable \
+    --project=${PROJECT_ID} \
+    container.googleapis.com \
+    compute.googleapis.com \
+    monitoring.googleapis.com \
+    logging.googleapis.com \
+    cloudtrace.googleapis.com \
+    meshca.googleapis.com \
+    meshtelemetry.googleapis.com \
+    meshconfig.googleapis.com \
+    iamcredentials.googleapis.com \
+    gkeconnect.googleapis.com \
+    gkehub.googleapis.com \
+    cloudresourcemanager.googleapis.com
+
+#SINGLE ZONE CLUSTER
+gcloud config set compute/zone ${CLUSTER_LOCATION}
+
+#REGIONAL CLUSTER
+gcloud config set compute/region ${CLUSTER_LOCATION}
+
+gcloud container clusters describe ${CLUSTER_NAME} --project ${PROJECT_ID}
+
+
+#3export EXISTING_LABELS=${LABELS}
+
+
+gcloud container clusters update ${CLUSTER_NAME} \
+  --project ${PROJECT_ID} \
+  --update-labels=mesh_id=${MESH_ID},${EXISTING_LABELS}
+
+
+
+gcloud container clusters update ${CLUSTER_NAME} \
+   --project=${PROJECT_ID} \
+   --workload-pool=${WORKLOAD_POOL}
+
+
+gcloud container clusters update ${CLUSTER_NAME} \
+   --project=${PROJECT_ID} \
+   --enable-stackdriver-kubernetes
+
+#########################################
+SERVICE MESH
+##########################################
+
+
+
+curl --request POST \
+  --header "Authorization: Bearer $(gcloud auth print-access-token)" \
+  --data '' \
+  "https://meshconfig.googleapis.com/v1alpha1/projects/${PROJECT_ID}:initialize"
+
+
+gcloud container clusters get-credentials ${CLUSTER_NAME} \
+    --project=${PROJECT_ID}
+
+kubectl create clusterrolebinding cluster-admin-binding \
+  --clusterrole=cluster-admin \
+  --user="$(gcloud config get-value core/account)"
+
+curl -LO https://storage.googleapis.com/gke-release/asm/istio-1.6.11-asm.1-linux-amd64.tar.gz
+
+
+curl -LO https://storage.googleapis.com/gke-release/asm/istio-1.6.11-asm.1-linux-amd64.tar.gz.1.sig
+
+tar xzf istio-1.6.11-asm.1-linux-amd64.tar.gz
+
+
+openssl dgst -verify /dev/stdin -signature istio-1.6.11-asm.1-linux-amd64.tar.gz.1.sig istio-1.6.11-asm.1-linux-amd64.tar.gz <<'EOF'
+-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEWZrGCUaJJr1H8a36sG4UUoXvlXvZ
+wQfk16sxprI2gOJ2vFFggdq3ixF2h4qNBt0kI7ciDhgpwS8t+/960IsIgw==
+-----END PUBLIC KEY-----
+EOF
+
+
+tar xzf istio-1.6.11-asm.1-linux-amd64.tar.gz
+
+
+cd istio-1.6.11-asm.1
+export PATH=$PWD/bin:$PATH
+
+kpt pkg get \
+https://github.com/GoogleCloudPlatform/anthos-service-mesh-packages.git/asm@release-1.6-asm asm
+
+kpt cfg set asm gcloud.core.project ${PROJECT_ID}
+
+
+kpt cfg set asm gcloud.project.environProjectNumber ${ENVIRON_PROJECT_NUMBER}
+kpt cfg set asm gcloud.container.cluster ${CLUSTER_NAME}
+kpt cfg set asm gcloud.compute.location ${CLUSTER_LOCATION}
+
+#IF ALL CLUSTERS ARE IN SAME PROJECT
+kpt cfg set asm anthos.servicemesh.profile asm-gcp
+#DIFFERENT PROFILE
+#kpt cfg set asm anthos.servicemesh.profile asm-gcp-multiproject
+
+kpt cfg list-setters asm
+
+#INSTALL ANTHOS SVC MESH
+
+kubectl config current-context
+
+kubectl create namespace istio-system
+istioctl install \
+  -f asm/cluster/istio-operator.yaml \
+  --revision=asm-1611-1
+
+kubectl apply -f asm/canonical-service/controller.yaml
+
+kubectl get pod -n istio-system
+
+
+
+## config Management
+
+
+
+gcloud container clusters get-credentials abc
+
+kubectl create clusterrolebinding cluster-admin-binding \
+    --clusterrole cluster-admin --user geo.antony@aividtechvision.com
+
+
+ gcloud alpha container hub config-management enable
+
+
+# config-management.yaml
+
+apiVersion: configmanagement.gke.io/v1
+kind: ConfigManagement
+metadata:
+  name: config-management
+  namespace: config-management-system
+
+spec:
+  git:
+    syncRepo: https://github.com/GoogleCloudPlatform/csp-config-management/
+    syncBranch: 1.0.0
+    secretType: none
+    policyDir: "foo-corp"
+
+export CONFIG_YAML=PATH_TO_CONFIG_YAML
+
+ gcloud alpha container hub config-management apply \
+     --membership=cluster-1 \
+     --config=config.yaml \
+     --project=$PROJECT_ID
+kubectl get ns -l app.kubernetes.io/managed-by=configmanagement.gke.io
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####################################
+
+gsutil cp gs://config-management-release/released/latest/config-management-operator.yaml config-management-operator.yaml
+
+kubectl apply -f config-management-operator.yaml
+
+
+kubectl create secret generic git-creds \
+--namespace=config-management-system \
+--from-file=ssh=/path/to/sshfile
+
+gcloud projects add-iam-policy-binding [PROJECT_ID] \
+--member serviceAccount:PROJECT_NUMBER-compute@developer.gserviceaccount.com \
+--role roles/source.reader
+
+cat <<EOF >cm.yaml
+apiVersion: configmanagement.gke.io/v1
+kind: ConfigManagement
+metadata:
+  name: config-management
+spec:
+  # clusterName is required and must be unique among all managed clusters
+  clusterName: my-cluster
+  git:
+    syncRepo: git@github.com:my-github-username/csp-config-management.git
+    syncBranch: 1.0.0
+    secretType: ssh
+    policyDir: "foo-corp" 
+EOF
+
+kubectl apply -f config-management.yaml
+
+
+gcloud iam service-accounts create cnrm-system --project [PROJECT_ID]
+
+
+gcloud iam service-accounts list | grep cnrm-system
+
+gcloud projects add-iam-policy-binding [PROJECT_ID] \
+ --member "serviceAccount:[SERVICE_ACCOUNT_EMAIL]" \
+ --role "roles/owner"
+
+gcloud iam service-accounts keys create \
+ --iam-account "[SERVICE_ACCOUNT_EMAIL]" \
+ ./key.json
+
+kubectl create secret generic gcp-key \
+ --from-file ./key.json \
+ --namespace cnrm-system
+
+kubectl get crds | grep cnrm.cloud.google.com

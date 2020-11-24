@@ -1,0 +1,26 @@
+# awk curl grep sed sha256sum tr git kpt kubectl jq
+curl -O https://storage.googleapis.com/csm-artifacts/asm/install_asm
+curl -O https://storage.googleapis.com/csm-artifacts/asm/install_asm.sha256
+sha256sum -c --ignore-missing install_asm.sha256
+chmod +x install_asm
+
+#The mode is either install, migrate, or upgrade.
+export mode=install
+#sudo apt-get install google-cloud-sdk-kpt
+
+# sudo apt-get install jq
+./install_asm \
+  --project_id $PROJECT_ID \
+  --cluster_name $CLUSTER_NAME \
+  --cluster_location $CLUSTER_LOCATION \
+  --mode install \
+  --output_dir . \
+  --only_validate
+
+#Update
+  ./install_asm \
+  -p PROJECT_ID \
+  -n CLUSTER_NAME \
+  -l CLUSTER_LOCATION \
+  -m upgrade \
+  --enable_apis
